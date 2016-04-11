@@ -10,10 +10,11 @@ class TingClientCommon {
    *
    * @param string $xml
    *  The xml to validate
+   *
    * @return bool
    *  Whether string is valid xml or not
    */
-  public static function validate_xml($xml) {
+  public static function validateXml($xml) {
     $dom = new DOMDocument();
     if (@$dom->loadXML($xml)) {
       return TRUE;
@@ -24,10 +25,11 @@ class TingClientCommon {
   /**
    * Convert an url to a filename [http://openadhl.addi.dk/1.1/adhl.xsd -> openadhl-addi-dk-1-1-adhl-xsd]
    *
-   * @param $url
+   * @param string $url
+   *
    * @return string
    */
-  public static function url_to_filename($url) {
+  public static function urlToFilename($url) {
     $parts = parse_url($url);
     // do not use the protocol (http) in filename
     unset($parts['scheme']);
@@ -40,57 +42,102 @@ class TingClientCommon {
 
   /**
    * Check if xsd_url is set. If not get it from given url and store it in tmp dir for later use
-   * @param string $check_data
-   *  Url to the xsd
+   *
+   * @param array $xsd_url
+   * @param array $params
    *
    * @TODO cleanup old files
    *
    * */
   public static function checkXsd($xsd_url, array $params) {
-    $filename = self::url_to_filename($xsd_url);
+    $filename = self::urlToFilename($xsd_url);
     // check in temp dir for the xsd.
     $dir = sys_get_temp_dir();
     $path = $dir . '/' . $filename;
+
     if (!file_exists($path)) {
+      if (!self::isUrl($xsd_url)) {
+        return $params;
+      }
       // get and store file in temp dir
       $file = file_get_contents($xsd_url);
       // only store valid xsd files
-      if (self::validate_xml($file)) {
+      if (self::validateXml($file)) {
         file_put_contents($dir . '/' . $filename, $file);
       }
-      else{
+      else {
         return $params;
       }
     }
-    return self::validate_xsd($path, $params);
+
+    return self::validateXsd($path, $params);
+  }
+
+  /**
+   * Check if given string is an url
+   *
+   * @param string
+   *
+   * @return bool
+   */
+  public static function isUrl($string) {
+    if (filter_var($string, FILTER_VALIDATE_URL)) {
+      return TRUE;
+    }
+    return FALSE;
+  }
+
+  /**
+   * Get the sequence given in params['action'] from schemadefinition.
+   *
+   * Validate (rearrange) given other parameters to follow the order given in
+   * the sequence
+   *
+   * @param string $path
+   * @param array $params
+   *
+   * @return array
+   * @throws \Exception
+   */
+  private static function validateXsd($path, $params) {
+    $schema = new xmlSchema();
+    try {
+      $schema->getFromFile($path);
+    }
+    catch(TingClientXmlException $e){
+      return $params;
+    }
+
+    $seq = $schema->getSequence($params['action']);
+    $arr[] = 'action';
+    foreach ($seq as $element) {
+      $s = $schema->getElementAttributes($element);
+      $arr[] = $s['name'];
+    }
+
+    return self::checkParameters($arr, $params);
   }
 
 
-  private static function validate_xsd($path, $params){
-
-    //return $params;
-
-     $schema = new xmlSchema();
-     $schema->get_from_file($path);
-
-     $seq = $schema->get_sequence($params['action']);
-     $arr[] = 'action';
-     foreach ($seq as $element) {
-       $s = $schema->get_element_attributes($element);
-       $arr[] = $s['name'];
-     }
-
-     return self::checkParameters($arr, $params);
-  }
-  private static function checkParameters($real_params, $params){
+  /**
+   * Rearrange parameters.
+   *
+   * @param array $real_params
+   *  parameters from schemadefinition
+   * @param array $params
+   *  parameter from the request
+   *
+   * @return array
+   *  parameters in the correct order
+   */
+  private static function checkParameters($real_params, $params) {
     $parsed_params = array();
     foreach ($real_params as $real_param) {
       if (!empty($params[$real_param])) {
         $parsed_params[$real_param] = $params[$real_param];
       }
     }
+
     return $parsed_params;
-
   }
-
 }

@@ -1,12 +1,12 @@
 <?php
+
 /**
  * @file
  * NanoSOAP class for simple interaction with SOAP webservices.
  */
-
 class NanoSOAPClient {
   const XML_HEADER = '<?xml version="1.0" encoding="UTF-8"?>';
-  private static $USER_AGENT = 'NanoSOAP for Drupal';
+  const USER_AGENT = 'NanoSOAP for Drupal';
 
   /**
    * SOAP endpoint, the URL to call SOAP requests on.
@@ -33,7 +33,9 @@ class NanoSOAPClient {
   public $requestBodyString;
 
   /**
-   * Construct the SOAP client, using the specified options.
+   * Construct the SOAP client, using the specified options
+   * @param string $endpoint
+   * @param array  $options
    */
   function __construct($endpoint, $options = array()) {
     $this->endpoint = $endpoint;
@@ -44,17 +46,6 @@ class NanoSOAPClient {
       $this->namespaces = array('SOAP-ENV' => 'http://schemas.xmlsoap.org/soap/envelope/');
     }
   }
-
-  /**
-   * Changes the user agent string
-   *
-   * @param string $user_agent
-   *   New value for the user agent string.
-   */
-  public static function setUserAgent($user_agent = 'NanoSOAP for Drupal') {
-    self::$USER_AGENT = $user_agent;
-  }
-
   /**
    * Gets the user agent string
    *
@@ -62,7 +53,7 @@ class NanoSOAPClient {
    *   Value of the user agent string.
    */
   public static function getUserAgent() {
-    return self::$USER_AGENT;
+    return self::USER_AGENT;
   }
 
   /**
@@ -77,7 +68,7 @@ class NanoSOAPClient {
    *   The HTTP method to use. One of "GET" or "POST".
    * @param string $body
    *   The request body, ie. the SOAP envelope for SOAP requests.
-   * @param array $headers
+   * @param array  $headers
    *   Array of headers to be sent with the request.
    *
    * @return string
@@ -88,7 +79,7 @@ class NanoSOAPClient {
     // details on what options are available.
     $curl_options = array(
       CURLOPT_URL => $url,
-      CURLOPT_USERAGENT => self::$USER_AGENT,
+      CURLOPT_USERAGENT => self::USER_AGENT,
       CURLOPT_RETURNTRANSFER => TRUE,
     );
 
@@ -124,7 +115,13 @@ class NanoSOAPClient {
     return $response;
   }
 
-  function getCurlInfo(){
+  /**
+   * Get curlinfo
+   *
+   * @return mixed
+   *  Curl info
+   */
+  function getCurlInfo() {
     return $this->curl_info;
   }
 
@@ -133,7 +130,7 @@ class NanoSOAPClient {
    *
    * @param string $action
    *   The SOAP action to perform.
-   * @param array $parameters
+   * @param array  $parameters
    *   The parameters to send with the SOAP request.
    *
    * @return string
@@ -160,8 +157,6 @@ class NanoSOAPClient {
     // Render and store the final request string.
     $this->requestBodyString = $this->doc->saveXML();
 
-    print $this->requestBodyString;
-
     // Send the SOAP request to the server via CURL.
     return $this->curlRequest($this->endpoint, 'POST', $this->requestBodyString, $headers);
   }
@@ -171,7 +166,7 @@ class NanoSOAPClient {
    *
    * @param string $name
    *   The parameter name.
-   * @param mixed $value
+   * @param mixed  $value
    *   Value of the parameter as array or string-compatible.
    *
    * @return DOMElement
@@ -219,6 +214,9 @@ class NanoSOAPClient {
 
   /**
    * Flatten parameter array.
+   *
+   * @return array.
+   *  xml elements as array.
    */
   function flattenArray($name, $array) {
     $elems = array();
@@ -237,6 +235,9 @@ class NanoSOAPClient {
 
   /**
    * Generate SOAP envelope.
+   *
+   * @return string.
+   *  Soap header
    */
   function generateSOAPenvelope() {
     $ns_string = '';
@@ -260,4 +261,4 @@ class NanoSOAPClient {
   }
 }
 
-class NanoSOAPcURLException extends Exception {}
+

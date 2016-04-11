@@ -2,14 +2,12 @@
 
 /**
  * @file
- * OpenHoldingsStatus : open_holdingstatus class
+ * OpenAdhlRequest class
  **/
+class OpenAdhlRequest extends TingClientRequest Implements TingClientRequestCacheInterface {
 
-class OpenAdhlRequest extends TingClientRequest Implements ITingClientRequestCache {
-
-  /* Implementation of ITingClientRequestCache */
-
-  /** \brief ITingClientRequestCache::cacheKey; get a cachekey
+  /**
+   * TingClientRequestCacheInterface::cacheKey; get a cachekey
    *
    * @return string
    **/
@@ -21,9 +19,10 @@ class OpenAdhlRequest extends TingClientRequest Implements ITingClientRequestCac
     return md5($ret);
   }
 
-  /** \brief make a cachekey based on request parameters
+  /**
+   * Make a cachekey based on request parameters
    *
-   * @param array $params
+   * @param array  $params
    * @param string $ret
    **/
   private function make_cache_key($params, &$ret) {
@@ -39,16 +38,18 @@ class OpenAdhlRequest extends TingClientRequest Implements ITingClientRequestCac
     }
   }
 
-  /** \brief ITingClientRequestCache::cacheEnable; Check if cache is enabled
+  /**
+   * TingClientRequestCacheInterface::cacheEnable; Check if cache is enabled
    *
-   * @return value of variable (drupal_get)
+   * @return mixed value of variable (drupal_get)
    **/
   public function cacheEnable($value = NULL) {
     $class_name = get_class($this);
     return variable_get($class_name . TingClientRequest::cache_enable);
   }
 
-  /** \brief set timeout of cache
+  /**
+   * Set timeout of cache
    *
    * @return mixed value of variable (variable_get)
    **/
@@ -57,7 +58,8 @@ class OpenAdhlRequest extends TingClientRequest Implements ITingClientRequestCac
     return variable_get($class_name . TingClientRequest::cache_lifetime, '1');
   }
 
-  /** \brief implements ITingClientRequestCache::cacheBin
+  /**
+   * Implements TingClientRequestCacheInterface::cacheBin
    *
    * @return string; name of cachebin
    **/
@@ -65,7 +67,13 @@ class OpenAdhlRequest extends TingClientRequest Implements ITingClientRequestCac
     return 'cache_adhl_webservices';
   }
 
-  // empty;
+  /**
+   * Implementation of abstract method processResponse
+   *
+   * @param \stdClass $result
+   *
+   * @return \stdClass
+   */
   public function processResponse(stdClass $result) {
     return $result;
   }

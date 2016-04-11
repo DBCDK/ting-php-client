@@ -1,27 +1,41 @@
 <?php
-// little program to parse fields from xsd
-//print_r($arr);
-/*foreach($arr as $key => $val)
-  // $ret[] = $val['name'];
-  echo '"'.$val['name'].'"=>"'.strtoupper($val['name']).'",'."\n";
 
-
-print_r($ret);
-//echo count($arr)."\n";
-//print_r($seq);*/
-
-
+/**
+ * Class xmlSchema.
+ *
+ * Load a xml schema definition and retrive element definitions.
+ *
+ * Sample usage; Get an array describing checkElectronicDeliveryRequest element
+ * from openorder.xsd;
+ *
+ * $schema = new xmlSchema();
+ * $schema -> getFromFile ('opeorder.xsd')
+ * $definition = $schema -> getSequenceArray ('checkElectronicDeliveryRequest')
+ *
+ */
 class xmlSchema {
+  /**
+   * @var DOMXPath xpath;
+   */
   public $xpath;
 
-  public function __construct()
-  { }
+  public function __construct() {
+  }
 
-  public function get_sequence_array($element_name) {
-    $seq = $this->get_sequence($element_name);
+  /**
+   * Get an array describing an element
+   *
+   * @param $element_name ;
+   *  Name of the element
+   *
+   * @return array | NULL
+   *  Elementdefinition or NULL if element was not found
+   */
+  public function getSequenceArray($element_name) {
+    $seq = $this->getSequence($element_name);
 
     foreach ($seq as $element) {
-      $arr[] = $this->get_element_attributes($element);
+      $arr[] = $this->getElementAttributes($element);
     }
 
     foreach ($arr as $key => $val) {
@@ -31,35 +45,56 @@ class xmlSchema {
     return $ret;
   }
 
-  public function get_from_file($filename) {
+  /**
+   * Load xsd from file.
+   *
+   * @param string $filename
+   *
+   * @throws \Exception
+   */
+  public function getFromFile($filename) {
     $dom = new DOMDocument();
-    if ( !@$dom->load($filename) ) {
-      // try to download XSDs from URLs
-      $client = new ting_client_class();
-      $XSDurls = $client->getXSDurls();
-      // try to read file again
-      if ( !@$dom->load($filename) ) {
-        throw new Exception('ting-client: could not open file: ' . $filename);
-      }
+    if (!@$dom->load($filename)) {
+      throw new TingClientXmlException('bad file: ' . $filename);
+    }
+
+    $this->xpath = new DOMXPath($dom);
+  }
+
+  /**
+   * Load xsd from url.
+   *
+   * @param string $filename
+   */
+  public function getFromUrl($filename) {
+    $dom = new DOMDocument();
+    if (!@$dom->load($filename)) {
+      throw new TingClientXmlException('bad file: ' . $filename);
     }
     $this->xpath = new DOMXPath($dom);
   }
 
-  public function get_from_url($filename) {
+  /**
+   * Initialize from xml.
+   *
+   * @param string $xml
+   */
+  public function setFromXml($xml) {
     $dom = new DOMDocument();
-    if (! @$dom->load($filename))
-      die("could not open file: ".$filename."\n" );
+    if (!@$dom->loadXML($xml)) {
+      throw new TingClientXmlException('bad xml: ' . $xml);
+    }
     $this->xpath = new DOMXPath($dom);
   }
 
-  public function set_from_xml($xml) {
-    $dom = new DOMDocument();
-    if (!@$dom->loadXML($xml) )
-      die("could not load xml");
-    $this->xpath = new DOMXPath($dom);
-  }
-
-  public function get_element_attributes($element_name) {
+  /**
+   * Get attributes from given element name.
+   *
+   * @param $element_name
+   *
+   * @return mixed
+   */
+  public function getElementAttributes($element_name) {
     $element = helpFunc::split($element_name);
 
     $query = "//*[@name='" . $element . "']/@*";
@@ -72,7 +107,14 @@ class xmlSchema {
     return $ret;
   }
 
-  public function is_simple_type($element_name) {
+  /**
+   * Check if given element is simpleType
+   *
+   * @param $element_name
+   *
+   * @return bool
+   */
+  public function isSimpleType($element_name) {
     $query = "//*[@name='" . $element_name . "']/@*";
     $nodes = $this->xpath->query($query);
     foreach ($nodes as $node) {
@@ -86,36 +128,53 @@ class xmlSchema {
       //check if simpleType is inline
       $query = "//*[@name='" . $element_name . "']/*[local-name()='simpleType']";
       $nodes = $this->xpath->query($query);
-      if ($nodes->length > 0)
-        return true;
+      if ($nodes->length > 0) {
+        return TRUE;
+      }
 
-      return false;
+      return FALSE;
     }
 
     $typename = helpFunc::split($type);
-    $query = "//*[local-name()='simpleType'][@name='" . $typename."']";
+    $query = "//*[local-name()='simpleType'][@name='" . $typename . "']";
 
     $nodes = $this->xpath->query($query);
-    if ($nodes->length > 0)
-      return true;
+    if ($nodes->length > 0) {
+      return TRUE;
+    }
 
-    return false;
+    return FALSE;
   }
 
-  public function get_sequence($element_name) {
+  /**
+   * Get sequence for given element.
+   *
+   * @param $element_name
+   *  Name of the sequence
+   *
+   * @return array | Null
+   *  Sequence definition or NULL if not found
+   */
+  public function getSequence($element_name) {
     $element = helpFunc::split($element_name);
 
     $query = "//*[@name='" . $element . "']//*[local-name()='element']/@*";
     $nodes = $this->xpath->query($query);
     foreach ($nodes as $node) {
-      if ($node->nodeName == "ref" || $node->nodeName == "type")
+      if ($node->nodeName == "ref" || $node->nodeName == "type") {
         $ret[] = $node->nodeValue;
+      }
     }
-
 
     return $ret;
   }
 
+  /**
+   * Get all namespaces.
+   *
+   * @return array
+   *  Namespaces in a array
+   */
   public function namespaces() {
     // get all namespaces
     $query = "//namespace::*";
@@ -124,60 +183,16 @@ class xmlSchema {
     $namespaces = array();
     foreach ($nodelist as $node) {
       // remove 'xlmns:'
-      if ($index = strpos($node->nodeName, ':'))
+      if ($index = strpos($node->nodeName, ':')) {
         $key = substr($node->nodeName, $index + 1);
-      else
+      }
+      else {
         $key = $node->nodeName;
+      }
 
       $namespaces[$key] = $node->nodeValue;
     }
     return $namespaces;
-  }
-}
-class helpFunc {
-  /** Return true if given path starts with 'http(s)' */
-  public static function is_url($path) {
-    $elements = parse_url($path);
-    //print_r($elements);
-    if (strtolower($elements['scheme']) == 'http' ||  strtolower($elements['scheme']) == 'https')
-      return true;
-    return false;
-  }
-
-  public static function split($string) {
-    if (strpos($string, ':') > 0) {
-      $split = explode(':', $string);
-      return $split[1];
-    }
-    return $string;
-  }
-
-  public static function get_type($element) {
-    if (strpos($element, ':') > 0) {
-      $split = explode(':', $element);
-      return $split[0];
-    }
-    return false;
-  }
-
-  public static function soap_header($namespaces) {
-    $ret .= '<SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope"'."\n";
-    foreach ($namespaces as $prefix => $namespace) {
-      $ret .= 'xmlns:'.$prefix.'="'.$namespace."\"\n";
-    }
-    // remove last \n character
-    $ret = substr($ret, 0, -1);
-    $ret .= '>'."\n".'<SOAP-ENV:Body>'."\n";
-
-    return $ret;
-  }
-
-  public static function soap_footer() {
-    $ret .= '</SOAP-ENV:Body>'."\n";
-    $ret .= '</SOAP-ENV:Envelope>'."\n";
-
-
-    return $ret;
   }
 }
 
